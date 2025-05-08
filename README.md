@@ -9,6 +9,7 @@ Math
 ====
 
 $O = 2 \pi r$
+
 $\sqrt{3x-1}+(1+x)^2$
 
 **The Cauchy-Schwarz Inequality**\
