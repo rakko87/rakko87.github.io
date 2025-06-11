@@ -1,9 +1,7 @@
 Testing github pages with plain html documents, pyscript and pyodide.
 
-Link:
-
-rakko87.github.io/
-[rakko87.github.io](https://rakko87.github.io)
+Link to page
+[rakko87.github.io](https://rakko87.github.io)  
 
 Math
 ====
