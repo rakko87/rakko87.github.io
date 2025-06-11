@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>D3 Rectangle Draw from (0,0) with 0.1 Snap</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { font-family: sans-serif; }
+    #info { margin-top: 10px; }
+    svg { border: 1px solid #ccc; }
+    .rect { fill: rgba(0, 120, 255, 0.2); stroke: #0078ff; stroke-width: 2; }
+    .axis path, .axis line { stroke: #888; }
+    svg text {
+  user-select: none;
+}
+  </style>
+</head>
+<body>
+  <svg width="600" height="400"></svg>
+  <div id="info"></div>
+  <script>
+    const svgWidth = 600, svgHeight = 400;
+    const margin = {left: 50, right: 20, top: 30, bottom: 40};
+    const plotWidth = svgWidth - margin.left - margin.right;
+    const plotHeight = svgHeight - margin.top - margin.bottom;
+
+    const svg = d3.select("svg")
+      .attr("width", svgWidth)
+      .attr("height", svgHeight);
+
+    // Scales: 0,0 at top-left, x and y from 0 to 10
+    const xScale = d3.scaleLinear()
+      .domain([0, 10])
+      .range([margin.left, margin.left + plotWidth]);
+
+    const yScale = d3.scaleLinear()
+      .domain([0, 10])
+      .range([margin.top, margin.top + plotHeight]); // top-left is 0,0
+
+    // X Axis (top) with 0.1 increments
+    svg.append("g")
+      .attr("class", "axis")
+      .attr("transform", `translate(0,${margin.top})`)
+      .call(
+        d3.axisTop(xScale)
+          .tickValues(d3.range(0, 10.01, 1.0))
+          .tickFormat(d => Number.isInteger(d) ? d : d.toFixed(1))
+      );
+
+    // Y Axis (left) with 0.1 increments
+    svg.append("g")
+      .attr("class", "axis")
+      .attr("transform", `translate(${margin.left},0)`)
+      .call(
+        d3.axisLeft(yScale)
+          .tickValues(d3.range(0, 10.01, 1.0))
+          .tickFormat(d => Number.isInteger(d) ? d : d.toFixed(1))
+      );
+      
+     // Draw x*y at each integer grid point in the plot area
+for (let xi = 1; xi <= 10; xi++) {
+  for (let yi = 1; yi <= 10; yi++) {
+    svg.append("text")
+      .attr("x", xScale(xi))
+      .attr("y", yScale(yi) + 0)
+      .attr("font-size", "12px")
+      .attr("fill", "#bbb")
+      .attr("text-anchor", "middle")
+      .attr("pointer-events", "none")
+      .text(xi * yi);
+  }
+}
+
+    // Rectangle drawing logic
+    const info = d3.select("#info");
+    let rect, drawing = false;
+
+    // Rectangle always starts at (0,0) in data space
+    const startX = xScale(0);
+    const startY = yScale(0);
+// --- Initialize rectangle to random whole integer x and y ---
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+let currentX = randomInt(1, 10);
+let currentY = randomInt(1, 10);
+
+rect = svg.append("rect")
+  .attr("class", "rect")
+  .attr("x", startX)
+  .attr("y", startY)
+  .attr("width", xScale(currentX) - startX)
+  .attr("height", yScale(currentY) - startY);
+
+
+    // Add this function before your event listeners:
+function updateRect(length, width) {
+  length = Math.max(0, Math.min(10, Math.round(length)));
+  width = Math.max(0, Math.min(10, Math.round(width)));
+  rect
+    .attr("width", xScale(length) - startX)
+    .attr("height", yScale(width) - startY);
+  info.text(
+    `${length.toFixed(1)} * ${width.toFixed(1)}, = ${(length * width).toFixed(2)}`
+  );
+  currentX = length;
+  currentY = width;
+}
+
+    svg.on("mousedown", (event) => {
+      if (event.button !== 0) return; // Only left mouse button
+      drawing = true;
+      // Remove any previous rectangle
+      svg.selectAll(".rect").remove();
+      rect = svg.append("rect")
+        .attr("class", "rect")
+        .attr("x", startX)
+        .attr("y", startY)
+        .attr("width", 0)
+        .attr("height", 0);
+      info.text("");
+    });
+
+ svg.on("mousemove", (event) => {
+  if (!drawing) return;
+  const [mx, my] = d3.pointer(event);
+  // Clamp to plot area
+  const x1 = Math.max(margin.left, Math.min(mx, margin.left + plotWidth));
+  const y1 = Math.max(margin.top, Math.min(my, margin.top + plotHeight));
+  // Convert to data coordinates
+  let x1Val = xScale.invert(x1);
+  let y1Val = yScale.invert(y1);
+  // Snap to nearest 0.1
+  x1Val = Math.round(x1Val * 10) / 10;
+  y1Val = Math.round(y1Val * 10) / 10;
+  // Clamp snapped values to [0, 10]
+  x1Val = Math.max(0, Math.min(10, x1Val));
+  y1Val = Math.max(0, Math.min(10, y1Val));
+  // Update currentX/currentY
+  currentX = x1Val;
+  currentY = y1Val;
+  updateRect(currentX, currentY);
+});
+
+    svg.on("contextmenu", (event) => {
+      event.preventDefault();
+      if (!drawing) return;
+      drawing = false;
+    });
+
+    svg.on("mouseup", (event) => {
+      if (event.button !== 0) return;
+      drawing = false;
+    });
+
+
+
+document.addEventListener("keydown", (event) => {
+  if (!rect) return;
+  let changed = false;
+  if (event.key === "ArrowRight") {
+    currentX = Math.min(10, Math.round(currentX+ 1));
+    changed = true;
+  }
+  if (event.key === "ArrowLeft") {
+    currentX = Math.max(0, Math.round(currentX - 1));
+    changed = true;
+  }
+  if (event.key === "ArrowDown") {
+    currentY = Math.min(10, Math.round(currentY + 1));
+    changed = true;
+  }
+  if (event.key === "ArrowUp") {
+    currentY = Math.max(0, Math.round(currentY - 1));
+    changed = true;
+  }
+  if (changed) {
+    updateRect(currentX, currentY);
+    event.preventDefault();
+  }
+});
+  </script>
+</body>
+</html>
